@@ -6,7 +6,7 @@ Bellabeat is a high-tech company that manufactures health-focused smart products
 
 #### *Business task:*
 
-Analyze fitness tracker data to find trends and patterns. Then use these insights to inform Bellabeat's marketing strategy for product Leaf.
+Analyze FitBit fitness tracker data to find trends and patterns. Then use these insights to inform Bellabeat's marketing strategy for product Leaf.
 
 #### *Data used:*
 
