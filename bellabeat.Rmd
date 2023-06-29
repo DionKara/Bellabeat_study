@@ -1,0 +1,1149 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+<br/>
+
+
+### Phase 1: Ask
+
+<br/>
+
+**_What is the problem you are trying to solve?_**
+
+Inform marketing strategy for a specific Bellabeat product - Leaf -  based on insights gained from analyzing non-Bellabeat smart devices usage data.
+
+
+
+**_How can your insights drive business decisions?_**
+
+Analyzing smart devices usage data can reveal trends in users behavior. 
+This information will help make our marketing strategy more efficient by showing to the target audience how our product not only meets their needs but also improves their life.
+
+
+
+**_Key stakeholders_** : Urška Sršen
+
+
+<br/>
+
+
+
+
+### Phase 2: Prepare
+
+<br/>
+
+**Dataset name:** FitBit Fitness Tracker Data.
+
+**Data content:** Fitness tracker data for 30 users from 4-12-2016 to 5-12-2016 (31 days).
+
+**Data source:** The data is cited and the source is trustworthy - Kaggle, Mobius, gold rated dataset.
+
+**Data link:** https://www.kaggle.com/datasets/arashnic/fitbit
+
+**Data storage:** Data is stored in CSV files - 18 CSV files in total.
+
+**Data format:** Data is in long format since we have 31 rows of data for each user (data subject) 
+
+**Data accuracy:** To be checked.
+
+**Data completeness:** To be checked.
+
+**Data license:** CC0 - Public Domain (No Copyright) 
+
+**Data privacy:** Processing and analysis results are fully private 
+since we downloaded the data locally and perform every task on local device.
+
+**Data security:** Dependent on security of our local device storage,
+handled by trustworthy antivirus software. 
+
+**Data access:** The only person with direct access to this device is me.
+
+
+<br/><br/>
+
+
+**_How will data help you answer your question?_**
+
+We will use this data to explore and find trends in users’ habits. Then we will guide Bellabeat's marketing strategy on Leaf product based on this information.
+  
+
+**_Are there any problems with the data?_**
+
+1. Sample group is not clearly stated in the dataset (we refer to females)
+
+2. Data is a bit outdated (three years old).
+
+<br/>
+
+It would be optimal to add data collected from female users exclusively,
+as well as more up-to-date observations, since three years are enough for
+people's habits and needs to change. 
+
+<br/>
+
+
+**Data files used:**
+
+- "dailyActivity_merged.csv"
+
+- "hourlyCalories_merged.csv"
+
+- "sleepDay_merged.csv"
+
+- "heartrate_seconds_merged.csv"
+
+
+<br/>
+
+
+
+
+
+### Phase 3: Process
+
+
+<br/>
+
+**Tools used**:  
+
+I first tried using spreadsheets but it takes a long time processing files of a few MB.
+So it's better to work with SQL/R. 
+I chose R because I can load the data easily and work locally in my desktop with RStudio 
+(no uploading needed - my upload speed is very low).
+
+*(Note: Files of a few MB take a lot of time to process with spreadsheets. Better go for SQL or R/Python.)*
+
+<br/>
+
+
+**Processing begins...**
+
+<br/>
+
+*Import libraries.*
+
+```{r}
+library(tidyverse)
+```
+<br/>
+
+*Load the data into data frames.*
+
+```{r}
+daily_activity <- read.csv("dataset/FitBit_Fitness_Tracker_Data/dailyActivity_merged.csv")
+hourly_calories <- read.csv("dataset/FitBit_Fitness_Tracker_Data/hourlyCalories_merged.csv")
+daily_sleep <- read.csv("dataset/FitBit_Fitness_Tracker_Data/sleepDay_merged.csv")
+heart_rate <- read.csv("dataset/FitBit_Fitness_Tracker_Data/heartrate_seconds_merged.csv")
+
+```
+
+
+<br/>
+
+*Preview the data.*
+
+```{r}
+head(daily_activity)
+```
+
+
+```{r}
+summary(daily_activity)
+```
+<br/>
+
+*Quick notice from the above summary:*
+
+1. ActivityDate is in character format.
+
+2. TotalSteps, TotalDistance and Calories have minimum value of 0 which is odd 
+    (probably tracker didn't work that day).
+
+3. SedentaryMinutes has a maximum value of 1440=24hr which is also odd.
+
+4. From ActiveDistance and ActiveMinutes 4 corresponding columns we see that
+   most users are sedentary and lightly active.
+
+<br/>
+
+Extra notice: Most of the rows have SedentaryActiveDistance = 0 (which makes sense), but
+there are a few that have values > 0, reaching even 0.11. These could be erroneous
+measurements of the tracker but i chose not to delete these rows as the rest fields are
+okay and it didn't feel like a big deal to me.
+For sure it is something that i would discuss with team members and stakeholders
+(as well as the rest of the bad rows situations).
+
+
+
+```{r}
+head(hourly_calories)
+```
+
+```{r}
+summary(hourly_calories)
+```
+<br/>
+
+*Quick notice from the above summary:*
+
+1. ActivityHour is in character format.
+
+2. Calories minimum value per hour is 42. In general, a person's resting calorie burn rate 
+   is 45 calories per hour, so data is correct.
+
+
+
+
+
+```{r}
+head(daily_sleep)
+```
+
+
+```{r}
+summary(daily_sleep)
+```
+<br/>
+
+*Quick notice from the above summary:*
+
+1. SleepDay is in character format.
+
+2. Most people sleep once a day (only at night obviously).
+
+3. On average, people are awake about 40 minutes (TotalTimeInBed-TotalMinutesAsleep) while in bed.
+
+4. TotalTimeInBed ranges from 1 to 16 hours in a day, which are really extreme values.
+
+
+
+```{r}
+head(heart_rate)
+```
+
+
+```{r}
+summary(heart_rate)
+```
+<br/>
+
+*Quick notice from the above summary:*
+
+1. Time is in character format.
+
+2. Minimum and maximum values of heart rate recorded are 36 and 203 respectively.
+   These are really extreme values and should be investigated.
+
+
+
+
+<br/><br/>
+
+
+*Cleaning and Transforming the data.*
+
+<br/>
+
+Convert Date columns type from character to Date and separate from time.
+
+```{r}
+daily_activity$ActivityDate <- mdy(daily_activity$ActivityDate)
+hourly_calories$ActivityHour <- mdy_hms(hourly_calories$ActivityHour)
+daily_sleep$SleepDay <- mdy_hms(daily_sleep$SleepDay)
+heart_rate$Time <- mdy_hms(heart_rate$Time)
+
+hourly_calories$ActivityDate <- date(hourly_calories$ActivityHour)
+hourly_calories$ActivityHour <- hour(hourly_calories$ActivityHour)
+
+daily_sleep$SleepDate <- date(daily_sleep$SleepDay)
+daily_sleep$SleepHour <- hour(daily_sleep$SleepDay)
+
+daily_sleep <- daily_sleep %>% select(-SleepDay)
+
+heart_rate$date <- date(heart_rate$Time) 
+heart_rate$hour <- hour(heart_rate$Time)
+
+heart_rate <- heart_rate %>% select(-Time)
+
+```
+
+<br/>
+
+All SleepHour values are 12:00:00 AM so this column is actually useless (we'll drop it).
+
+```{r}
+daily_sleep <- select(daily_sleep, -SleepHour)
+```
+
+
+<br/>
+
+*Check for bad rows.*
+
+<br/>
+
+Rows with 0 total steps.
+
+```{r}
+daily_activity %>%
+  filter(TotalSteps==0) %>%
+  select(Id, ActivityDate, TotalSteps, SedentaryMinutes, Calories)
+```
+
+<br/>
+
+Rows with 1440 (24hr) sedentary minutes. (User sits the whole day).
+
+```{r}
+daily_activity %>%
+  filter(SedentaryMinutes==1440) %>%
+  select(Id, ActivityDate, TotalSteps, SedentaryMinutes, Calories)
+```
+
+<br/>
+
+After seeing that there are many rows with 0 steps, I considered an acceptable
+threshold of 200 for daily steps per user.
+
+
+
+```{r}
+daily_activity %>%
+  filter(TotalSteps<200) %>%
+  select(Id, ActivityDate, TotalSteps, TotalDistance, SedentaryMinutes, Calories) %>%
+  arrange(desc(TotalSteps))
+```
+
+<br/>
+
+I also considered a threshold of 1430 for sedentary minutes. 
+
+Drop these rows from daily_activity.
+
+```{r}
+daily_activity <- daily_activity %>%
+  filter(SedentaryMinutes<1430) %>%
+  filter(TotalSteps>200)
+
+# Reset row names
+rownames(daily_activity) <- NULL
+```
+
+<br/>
+
+Even if these rows are actually correct and refer to injured/disabled/ill people,
+they are extreme cases out of our interest since our audience is people that can workout.
+
+We are studying people's routine and habits, so the above cases are completely out of
+someone's routine.
+
+
+<br/>
+
+Filter rows with less than 3 hours and more than 10 hours in bed daily.
+
+```{r}
+daily_sleep %>%
+  filter(TotalTimeInBed<180 | TotalTimeInBed>600) %>%
+  select(Id, SleepDate, TotalSleepRecords, TotalMinutesAsleep, TotalTimeInBed) %>%
+  arrange(desc(TotalTimeInBed))
+```
+
+<br/>
+
+There are 4 rows with 16 hours of TotalTimeInBed in a single sleep record, which is very high.
+
+Following the logic explained above, we will remove these rows.
+
+
+```{r}
+daily_sleep <- daily_sleep %>% filter(TotalTimeInBed != 961)
+
+rownames(daily_sleep) <- NULL
+```
+
+<br/>
+
+There are also about 20 rows with 1-3 hours of TotalTimeInBed, which is very low.
+In that case we can assume that people worked overtime or just stayed up all night having fun.
+
+We won't remove these rows since these people don't have a health problem,
+just a really exhausting/unhealthy lifestyle.
+
+
+
+
+```{r}
+heart_rate %>% filter(Value==36)
+```
+
+
+
+```{r}
+daily_activity %>% filter(Id==5577150313)
+```
+
+<br/>
+
+This user seems to be an athlete training frequently and intensely.
+This is verified through the columns: Calories, VeryActiveMinutes and SedentaryMinutes.
+Well trained athletes usually have low heart rates since their heart is used to frequent exercise
+and deals with their body's needs easily.
+Also, the measurement was at 2 AM (resting hour).
+So this is not an impossible value and we'll keep the data.
+
+
+
+
+```{r}
+heart_rate %>% filter(Value==203)
+```
+
+
+```{r}
+daily_activity %>% filter(Id==2022484408)
+```
+
+<br/>
+
+Although this user is pretty active (TotalSteps, ActiveMinutes), he spends a lot of time
+sitting (SedentaryMinutes). 
+Inactive people usually have higher heart rates since their heart is weak and struggles to cope with
+their body's needs.
+Also, on the day this value occured, the user had an unusually intense workout 
+(VeryActiveMinutes=104 > 2x avg) which obviously increased his heart rate dramatically.
+So this is not an impossible value and we'll keep the data.
+
+
+
+<br/>
+
+
+*Explore data further...*
+
+<br/>
+
+Number of different users in the data.
+
+
+```{r}
+n_distinct(daily_activity$Id)
+n_distinct(hourly_calories$Id)
+n_distinct(daily_sleep$Id)
+n_distinct(heart_rate$Id)
+```
+
+<br/>
+
+Number of days for each user in the data.
+
+
+```{r}
+as.data.frame(table(daily_activity$Id)) %>%
+  arrange(Freq)
+```
+
+<br/>
+
+There is a user with only 3 days of data. Let's verify this for the rest of the frames.
+
+
+```{r}
+cal_by_day <- hourly_calories %>% 
+  group_by(Id, ActivityDate) %>% 
+  summarise(mean_cal=mean(Calories))
+```
+
+
+```{r}
+as.data.frame(table(cal_by_day$Id)) %>%
+  arrange(Freq)
+```
+
+<br/>
+
+Remove the data for this user -> id = 4057192912 (3-4 days data are insufficient).
+
+```{r}
+daily_activity <- filter(daily_activity, Id != 4057192912)
+
+hourly_calories <- filter(hourly_calories, Id != 4057192912)
+
+
+# Reset row names
+rownames(daily_activity) <- NULL
+rownames(hourly_calories) <- NULL
+
+```
+
+
+
+```{r}
+temp <- as.data.frame(table(daily_sleep$Id)) %>%
+  arrange(Freq)
+
+temp
+```
+
+<br/>
+
+In daily_sleep there are more users with few days of data.
+
+Delete users with less than 8 days of data.
+
+
+```{r}
+daily_sleep <- filter(daily_sleep, !(Id %in% temp$Var1[1:7]))
+
+rownames(daily_sleep) <- NULL
+```
+
+
+
+
+```{r}
+rate_by_day <- heart_rate %>% 
+  group_by(Id, date) %>% 
+  summarise(mean_rate=mean(Value))
+
+```
+
+
+```{r}
+as.data.frame(table(rate_by_day$Id)) %>%
+  arrange(Freq)
+```
+
+<br/>
+
+Remove the data for this user -> id = 2026352035 (insufficient data).
+
+```{r}
+heart_rate <- filter(heart_rate, Id != 2026352035)
+
+# Reset row names
+rownames(heart_rate) <- NULL
+
+```
+
+
+<br/>
+
+*Visualize average daily activity (daily time series).*
+
+<br/>
+
+Aggregate by mean for all users.
+
+```{r}
+temp <- daily_activity %>%
+  group_by(ActivityDate) %>%
+  summarise(mean_sed = mean(SedentaryMinutes), mean_calories = mean(Calories))
+```
+
+<br/>
+
+Average calories burnt daily.
+
+```{r}
+ggplot(data=temp, aes(x=ActivityDate, y=mean_calories, group=1)) +
+  geom_line() +
+  geom_point() +
+  labs(title="Average calories burnt daily.", y = "Calories")
+
+```
+<br/>
+
+We notice an irregular drop at Calories values on the last day of observations - 2016-05-12.
+This means that for some reason users were very inactive that day.
+
+
+```{r}
+ggplot(data=temp, aes(x=ActivityDate, y=mean_sed, group=1)) +
+  geom_line() +
+  geom_point() +
+  labs(title="Average sedentary minutes daily.", y = "Minutes")
+
+```
+<br/>
+
+This plot however shows that SedentaryMinutes were also very low on that day which
+doesn't make any sense. So data on this date are inaccurate and need to be removed.
+
+
+```{r}
+daily_activity <- daily_activity %>% filter(ActivityDate!=as.Date("2016-05-12"))
+hourly_calories <- hourly_calories %>% filter(ActivityDate!=as.Date("2016-05-12"))
+daily_sleep <- daily_sleep %>% filter(SleepDate!=as.Date("2016-05-12"))
+heart_rate <- heart_rate %>% filter(date!=as.Date("2016-05-12"))
+
+```
+
+
+
+<br/><br/>
+
+
+
+**Documentation of any cleaning or manipulation of data:**
+
+
+1. Convert Date columns type from character to Date and separate from time.
+
+2. All SleepHour values are 12:00:00 AM so this column is actually useless and we droped it.
+
+3. Droped rows with less than 200 TotalSteps and more than 1430 SedentaryMinutes from daily_activity frame.
+   These users are extremely inactive - disabled/injured/ill and are not part of our audience. 
+
+4. Droped 4 rows with 16 hours of TotalTimeInBed in a single sleep record, which is very high.
+   Same occasion as above
+
+5. Remove data for this user -> id = 4057192912 (3-4 days data are insufficient)
+   from frames daily_activity, hourly_calories.
+
+6. Delete users with less than 8 days of data from daily_sleep frame.
+
+7. Remove data for this user -> id = 2026352035 (4 days data are insufficient)
+   from heart_rate frame.
+   
+8. Remove data collected on 2016-05-12 from all frames as they were inaccurate.
+
+
+<br/>
+
+
+
+### Phase 4: Analyze
+
+<br/>
+
+**_Key tasks:_**
+
+1. Aggregate data so it’s useful and accessible.
+2. Organize and format data. 
+3. Perform calculations. 
+4. Identify trends and relationships.
+
+<br/>
+
+
+We are already suspicious of relationships in the data and we are going to verify
+them using visualizations. We will also look for possible trends.
+
+Scatterplots are ideal for identifying relationships between two variables,
+while line graphs are suitable for discovering trends in the data.
+
+<br/>
+
+
+Calculate total active minutes and more active minutes (very + fairly) per day.
+
+```{r}
+daily_activity <- daily_activity %>%
+  mutate(TotalActiveMinutes = VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes, MoreActiveMinutes = VeryActiveMinutes + FairlyActiveMinutes)
+
+```
+
+<br/>
+
+TotalActiveMinutes ~ Calories.
+
+```{r}
+ggplot(data=daily_activity, aes(x=TotalActiveMinutes, y=Calories)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title="Relationship between Total Active Minutes and Calories (daily).", x ="Total Active Minutes", y = "Calories")
+
+```
+
+<br/>
+
+This plot shows the suspected positive correlation between TotalActiveMinutes and Calories,
+which means that staying active can help you lose weight. The more active you are
+the more calories you burn.
+
+<br/>
+
+TotalActiveMinutes ~ TotalSteps.
+
+```{r}
+ggplot(data=daily_activity, aes(x=TotalActiveMinutes, y=TotalSteps)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title="Relationship between Total Active Minutes and Total Steps (daily).", x ="Total Active Minutes", y = "Total Steps")
+
+```
+
+<br/>
+
+The above plot shows another obvious positive correlation between TotalActiveMinutes and
+TotalSteps, which tells us that walking is a great way to stay active and therefore burn calories.
+
+
+
+```{r}
+avg_user_activity <- daily_activity %>%
+  group_by(Id) %>%
+  summarise(mean_sed = mean(SedentaryMinutes), mean_act = mean(TotalActiveMinutes), mean_more_act = mean(MoreActiveMinutes), mean_steps = mean(TotalSteps), mean_cal=mean(Calories)) %>%
+  mutate(mean_sed = mean_sed/60, mean_act = mean_act/60, mean_more_act = mean_more_act/60)
+
+```
+
+
+
+```{r}
+temp <- avg_user_activity %>% select(mean_sed, mean_act, mean_more_act)
+temp$User <- 1:nrow(temp)
+temp <- tidyr::pivot_longer(temp, cols=c('mean_sed', 'mean_act', 'mean_more_act'), names_to='Variable', 
+values_to="Hours")
+
+
+ggplot(temp, aes(x=User, y=Hours, fill=Variable)) +
+  geom_bar(stat='identity', position='dodge') +
+  labs(title="Sedentary vs Active vs More Active hours for each user.")
+
+```
+
+<br/>
+
+The above plot gives us an idea of the sedentary-active minutes ratio for each user.
+There are many users that are sedentary for a big part of the day.
+
+<br/>
+
+Aggregate for all users by mean.
+
+```{r}
+mean(avg_user_activity$mean_sed)
+mean(avg_user_activity$mean_act)
+mean(avg_user_activity$mean_more_act)
+```
+
+<br/>
+
+The average user spends about:
+
+- 16 hours sitting.
+- 4 hours being active (including light activity).
+- 35 minutes being fairly/very active (workout).
+
+<br/>
+
+Sitting for more than 7 to 10 hours a day is bad for your health and usually causes 
+heart/weight problems - HealthyWA.
+
+<br/>
+
+We should do at least an average of 60 minutes per day of moderate-to-vigorous intensity - WHO.
+
+
+
+<br/>
+
+Calculate average calories hourly.
+
+```{r}
+avg_hour_cal <- hourly_calories %>%
+  group_by(ActivityHour) %>%
+  summarise(mean_calories = mean(Calories))
+
+
+avg_hour_cal$ActivityHourClass[avg_hour_cal$mean_calories<80] <- "inactive"
+
+avg_hour_cal$ActivityHourClass[avg_hour_cal$mean_calories>80 & avg_hour_cal$mean_calories<120] <- "active"
+
+avg_hour_cal$ActivityHourClass[avg_hour_cal$mean_calories>120] <- "very active"
+
+```
+<br/>
+
+Mean calories burnt (by an average user) each hour of the day.
+
+```{r}
+ggplot(data=avg_hour_cal, aes(x=ActivityHour, y=mean_calories, group=1)) +
+  geom_line() +
+  geom_point(aes(color = ActivityHourClass)) +
+  annotate("text", x = c(5,15,19), y = c(85,102,115), label = c("Wake up", "Finish job", "Workout")) +
+  labs(title="Mean calories burnt each hour of the day.", x ="Activity Hour", y = "Calories")
+
+```
+
+<br/>
+
+This plot informs us about how an average user's day is segmented based on calories burnt.
+He wakes up at about 5 AM, goes to work, finishes job at about 3 PM, works out 5-7 PM and finally rests.
+
+<br/>
+
+Calories burnt per hour (according to research):
+
+- 70 at rest.
+
+- 130 while walking (casual pace).
+
+<br/>
+
+The above plot shows that the highest hourly calorie burn rate is pretty low and corresponds
+to casual pace walking. Which means that most people prefer light activity when they workout.
+
+
+<br/>
+
+Total minutes awake while in bed for each user daily.
+
+```{r}
+daily_sleep <- daily_sleep %>%
+  filter(TotalSleepRecords==1) %>%
+  mutate(TotalMinutesAwake = TotalTimeInBed - TotalMinutesAsleep)
+
+```
+
+<br/>
+
+Considering that it normally takes some time from the moment you lay in bed until you fall asleep,
+this time is doubled for rows with TotalSleepRecords=2.
+
+So if a row with TotalSleepRecords=2 and another with TotalSleepRecords=1 have same TotalMinutesAwake,
+the one with 1 record actually slept worse.  
+
+<br/>
+
+In order to plot comparable data we filtered it to get only rows with TotalSleepRecords=1
+(which is the majority, so we don't lose many rows).
+
+
+```{r}
+avg_user_sleep <- daily_sleep %>%
+  group_by(Id) %>%
+  summarise(mean_awake = mean(TotalMinutesAwake))
+
+temp <- avg_user_sleep %>% select(mean_awake)
+temp$User <- 1:nrow(temp)
+```
+
+
+```{r}
+ggplot(data=temp, aes(x=User, y=mean_awake)) +
+  geom_bar(stat="identity", fill="steelblue") +
+  labs(title="Total Minutes Awake while in bed for each user (daily).", y="Minutes Awake")
+
+```
+
+<br/>
+
+There is a user with significantly higher minutes awake than the rest.
+We are going to remove data about him in daily_sleep frame since it's an
+outlier that inserts unnecessary noise to our dataset.
+
+<br/>
+
+Generally outliers can be useful. In this case though (marketing), we are trying to create an image
+of our customers lifestyle-habits. The broader the audience we refer to the better for
+the company (higher sales-profit). So outliers here are useless.
+
+<br/>
+
+Find that user.
+
+```{r}
+head(avg_user_sleep)
+```
+
+<br/>
+
+It's the one with Id = 3977333714. Remove him.
+
+```{r}
+daily_sleep <- daily_sleep %>% filter(Id != 3977333714)
+```
+
+
+```{r}
+mean(temp$mean_awake)
+```
+<br/>
+
+The average user spends 36 minutes awake while in bed.
+
+
+<br/>
+
+Merge daily_activity with daily_sleep to find relationship between activity and sleep.
+
+```{r}
+temp <- daily_activity %>% 
+  select(Id, ActivityDate, TotalSteps, TotalActiveMinutes, SedentaryMinutes, Calories)
+
+activity_sleep <- temp %>% 
+  inner_join( daily_sleep, by=c('Id'='Id', 'ActivityDate'='SleepDate'))
+
+head(activity_sleep)
+```
+<br/>
+
+TotalMinutesAsleep ~ SedentaryMinutes
+
+```{r}
+ggplot(data=activity_sleep, aes(x=TotalMinutesAsleep, y=SedentaryMinutes)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title="Relationship between Total Minutes Asleep and Sedentary Minutes", x ="Total Minutes Asleep", y = "Sedentary Minutes")
+
+```
+
+<br/>
+
+This plot shows that there is a negative correlation between sedentary minutes and
+total minutes asleep. Users sleep less on sedentary days. This means that if someone
+wants to improve his sleep he should reduce sedentary hours and be more active.
+
+
+
+<br/>
+
+Transform heart_rate frame to get avg, min and max hourly rates for each user. 
+
+```{r}
+heart_rate <- heart_rate %>% 
+  group_by(Id, hour) %>%
+  summarise(hourly_heart_rate=mean(Value)) %>% 
+  group_by(Id) %>% 
+  summarise(avg_rate=mean(hourly_heart_rate), min_rate=min(hourly_heart_rate), max_rate=max(hourly_heart_rate))
+
+head(heart_rate)
+```
+
+```{r}
+temp <- heart_rate %>% select(min_rate)
+temp$User <- 1:nrow(temp)
+
+ggplot(data=temp, aes(x=User, y=min_rate)) +
+  geom_bar(stat="identity", fill="steelblue") +
+  labs(title="Resting Heart Rate of each user.", y="Resting Heart Rate")
+
+```
+
+<br/>
+
+We can see that there is not an outlier here.
+
+```{r}
+mean(heart_rate$min_rate)
+mean(heart_rate$avg_rate)
+mean(heart_rate$max_rate)
+
+```
+<br/>
+
+The average user has:
+
+- Resting heart rate = 62
+- Average heart rate = 77
+- Maximum heart rate = 93
+
+<br/>
+
+These are generally values that correspond to healthy, frequently active people.
+
+
+
+```{r}
+head(avg_user_activity)
+```
+
+<br/>
+
+Merge avg_user_activity with heart_rate to find relationship between activity and resting heart rate.
+
+```{r}
+temp <- avg_user_activity %>% 
+  select(Id, mean_sed)
+
+activity_heart <- temp %>% 
+  inner_join( heart_rate, by=c('Id'='Id')) %>%
+  rename(RestingHeartRate = min_rate, SedentaryHours = mean_sed)
+
+head(activity_heart)
+```
+
+<br/>
+
+SedentaryHours ~ RestingHeartRate
+
+```{r}
+ggplot(data=activity_heart, aes(x=SedentaryHours, y=RestingHeartRate)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title="Relationship between Sedentary Hours and Resting Heart Rate", x ="Sedentary Hours", y = "Resting Heart Rate")
+
+```
+
+<br/>
+
+This plot shows that there is a positive correlation between sedentary hours and
+resting heart rate for sedentary hours > 12. This means that sitting too many hours
+during the day weakens the heart. Below the depicted threshold of 12 the trend changes
+because the body needs these sedentary hours (beneficial) to rest.
+
+<br/>
+
+As we explained previously, a low resting heart rate is a sign of a strong, healthy heart.
+Staying active and reducing excessive sitting is beneficial for your heart.
+
+
+<br/>
+
+
+### Phase 5: Share (Findings)
+
+<br/>
+
+**_Correlations:_**
+
+1. Positive between TotalActiveMinutes and Calories,
+which means that staying active can help you lose weight. 
+The more active you are the more calories you burn.
+
+2. Positive between TotalActiveMinutes and TotalSteps, 
+which tells us that walking is a great way to stay active.
+
+3. Negative between SedentaryMinutes and TotalMinutesAsleep. 
+Users sleep less on sedentary days. This means that if someone
+wants to improve his sleep he should reduce sedentary hours and be more active.
+
+4. Positive between SedentaryHours and RestingHeartRate for SedentaryHours > 12.
+This means that sitting too many hours during the day weakens the heart
+(low resting heart rate -> strong, healthy heart).
+Below the threshold of 12 hours the trend changes
+because the body needs these sedentary hours (beneficial) to rest.
+
+
+<br/>
+
+
+**_The average user:_**
+
+1. Spends about 16 hours sitting, 4 hours being active (including light activity)
+   and 35 minutes being fairly/very active (workout).
+
+2. Wakes up at about 5 AM, goes to work, finishes job at about 3 PM, works out 5-7 PM and finally rests.
+
+3. Prefers light activity (walking) when they workout.
+
+4. Spends 36 minutes awake while in bed.
+
+
+<br/>
+
+
+### Phase 6: Act
+
+<br/>
+
+**_High level recommendations for Bellabeat's marketing strategy - plan of action:_**
+
+<br/>
+
+Bellabeat's Leaf product is a health tracker that helps women
+make informed decisions about their health.
+It tracks activity, sleep, stress, meditation and reproductive health.
+
+<br/>
+
+*Why trackers are useful ?*
+
+Tracking how your body functions helps:
+- Identify how healthy you are.
+- Monitor your progress on reaching a desired goal.
+- Warn you for potential severe upcoming health problems in order to act in time.
+
+<br/>
+
+So the purpose of this product is to help people stay healthy and that's why
+someone should buy it.
+
+<br/>
+
+
+*How does Leaf help you stay healthy ?*
+
+By improving 3 key health indicators: Weight, Sleep and Heart Rate.
+
+<br/>
+
+As *FitBit Fitness Tracker Data* showed, activity is closely correlated with all these 3 factors:
+
+
+**1. Weight:**
+
+Going for a Walk is a good way to stay active, burn calories and maintain
+a healthy body weight. Having a daily goal of steps (10,000 - Mayo Clinic)
+will keep you consistent and bring fast results.
+
+Leaf tracks your steps and notifies you when you reached your goal.
+
+<br/>
+
+**2. Sleep:**
+
+Sitting too many hours worsens the quality of sleep (average user spends 36 minutes awake while in bed.). So in order to improve your sleep you should reduce sedentary hours and be more active.
+
+Leaf can track your sedentary minutes/activity and notify you to get up and do
+something.
+
+<br/>
+
+**3. Heart Rate:**
+
+Sitting too many hours during the day weakens the heart. So being active also
+helps to strengthen your heart.
+
+Leaf can track both your sedentary minutes/activity and heart rate, and notify
+you when either is concerning.
+
+<br/>
+
+**Activity recommendations/notifications:**
+
+Average user spends about 16 hours sitting (7 to 10 hours max sedentary time - HealthyWA), 
+4 hours being active (including light activity) and 35 minutes being fairly/very active (workout).
+We can notify users to workout (a popular workout interval is 5-7 pm according to data).
+Furthermore since data showed that most people prefer light activity (walking), we can
+make sure they included at least 60 minutes of moderate-to-vigorous intensity workout, as WHO suggests.
+
+<br/>
+
+All in all, Leaf can help you raise your well-being while staying fashionable!
+
+
+<br/><br/>
+
+
+### Challenges I faced during this project:
+
+1. Realizing what exactly I need to find.
+  
+   I had to translate the given task into something more specific and relevant to the data:
+   Inform our marketing strategy for a product -> How can that product help people stay healthy.
+   This is actually the reason someone should buy it and that's how it should be promoted/advertised.
+
+2. Choosing which data to use (there were 18 csv files in total).
+
+3. What information can I extract from the data that answers my problem/question.
+   Separate interesting from useful information. Stay focused on your task.
+
+4. Continuously modifying the code, adding data, implementing ideas that occurred to me
+   as the project went on, in order to make my work as complete as possible.
+
+
+<br/>
+
+### THE END
+
+
+
+
+
